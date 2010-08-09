@@ -1,0 +1,363 @@
+<?php
+
+/**
+ * Implements hook_entity_info().
+ */
+function artwork_entity_info() {
+  $return['artwork'] = array(
+    'label' => t('Artwork'),
+    'controller class' => 'ArtworkController',
+    'base table' => 'artwork',
+    'revision table' => 'artwork_revision',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'aid',
+      'revision' => 'vid',
+      'bundle' => 'type',
+     ),
+    'bundle keys' => array(
+      'bundle' => 'type',
+    ),
+    'static cache' => TRUE,
+    'bundles' => array(),
+    'view modes' => array(
+      'full' => array(
+        'label' => t('Full content'),
+        'custom settings' => FALSE,
+      ),
+      'teaser' => array(
+        'label' => t('Teaser'),
+        'custom settings' => FALSE,
+      ),
+    ),
+  );
+
+  foreach (artwork_types() as $type => $info) {
+    $return['artwork']['bundles'][$type] = array(
+      'label' => $info->name,
+      'admin' => array(
+        'path' => 'admin/structure/artworks/manage/%artwork_type',
+        'real path' => 'admin/structure/artworks/manage/' . str_replace('_', '-', $type),
+        'bundle argument' => 4,
+        'access arguments' => array('administer artworks'),
+      ),
+    );
+  }
+
+  return $return;
+}
+
+/**
+ * Implements hook_fied_extra_fields().
+ */
+function artwork_field_extra_fields() {
+  $extra = array();
+
+  foreach (artwork_types() as $type) {
+    $extra['artwork'][$type->type] = array(
+      'form' => array(
+        'title' => array(
+          'label' => t('Title'),
+          'description' => t('The name of the artwork'),
+          'weight' => -5,
+        ),
+      ),
+    );
+  }
+
+  return $extra;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function artwork_permission() {
+  return array(
+    'administer artworks' =>  array(
+      'title' => t('Administer artworks'),
+    ),
+    'create artworks' =>  array(
+      'title' => t('Create artworks'),
+    ),
+    'update artworks' =>  array(
+      'title' => t('Update artworks'),
+    ),
+    'view artworks' =>  array(
+      'title' => t('View artworks'),
+    ),
+    'delete artworks' =>  array(
+      'title' => t('Delete artworks'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function artwork_menu() {
+  $items['admin/structure/artworks'] = array(
+    'title' => 'Manage artworks',
+    'description' => 'Manage artworks.',
+    'page callback' => 'artwork_overview_types',
+    'access arguments' => array('administer artworks'),
+    'file' => 'artwork.admin.inc',
+  );
+  $items['admin/structure/artworks/manage/%artwork_type'] = array(
+    'title' => 'View artwork type',
+    'title callback' => 'artwork_type_page_title',
+    'title arguments' => array(4),
+    'page callback' => 'artwork_information',
+    'page arguments' => array(4),
+    'access arguments' => array('administer artworks'),
+    'file' => 'artwork.admin.inc',
+  );
+  $items['admin/structure/artworks/manage/%artwork_type/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['artwork/add'] = array(
+    'title' => 'Add new artwork',
+    'page callback' => 'artwork_add_page',
+    'access arguments' => array('create artworks'),
+    'weight' => 1,
+    'menu_name' => 'management',
+    'file' => 'artwork.pages.inc',
+  );
+  foreach (artwork_types() as $type) {
+    $type_url_str = str_replace('_', '-', $type->type);
+    $items['artwork/add/' . $type_url_str] = array(
+      'title' => $type->name,
+      'title callback' => 'check_plain',
+      'page callback' => 'artwork_add',
+      'page arguments' => array(2),
+      'access arguments' => array('create artwork'),
+      'description' => $type->description,
+      'file' => 'artwork.pages.inc',
+    );
+  }
+  $items['artwork/%artwork'] = array(
+    'title callback' => 'artwork_page_title',
+    'title arguments' => array(1),
+    'page callback' => 'artwork_page_view',
+    'page arguments' => array(1),
+    'access arguments' => array('view artworks'),
+    'type' => MENU_CALLBACK,
+    'file' => 'artwork.pages.inc',
+  );
+  $items['artwork/%artwork/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['artwork/%artwork/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'artwork_page_edit',
+    'page arguments' => array(1),
+    'access arguments' => array('update artworks'),
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'artwork.pages.inc',
+  );
+  $items['artwork/%artwork/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('artwork_delete_confirm', 1),
+    'access arguments' => array('delete artworks'),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
+    'file' => 'artwork.pages.inc',
+  );
+  $items['artwork/recent'] = array(
+    'title' => 'Recently added artworks',
+    'page callback' => 'artwork_page_list_recent',
+    'access arguments' => array('view artworks'),
+    'file' => 'artwork.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Sets the page title based on the specified artwork.
+ *
+ * @param $artwork
+ *   The artwork object.
+ */
+function artwork_page_title($artwork) {
+  return $artwork->title;
+}
+
+/**
+ * Implements hook_forms().
+ *
+ * All artwork forms share the same form handler.
+ */
+function artwork_forms() {
+  $forms = array();
+  if ($types = artwork_types()) {
+    foreach (array_keys($types) as $type) {
+      $forms[$type . '_artwork_form']['callback'] = 'artwork_form';
+    }
+  }
+  return $forms;
+}
+
+/**
+ * Get a list of all artwork types available.
+ *
+ * Usually this would be more full-featured.
+ *
+ * @return array
+ *   An array of artwork type objects. Note that the "type" key matches what
+ *   was defined as the main key in hook_entity_info().
+ */
+function artwork_types() {
+  $types = &drupal_static(__FUNCTION__);
+
+  if (empty($types)) {
+    $types['painting'] = (object)array(
+      'type' => 'painting',
+      'name' => t('Painting'),
+      'description' => t('A picture made with paint.')
+    );
+    $types['sculpture'] = (object)array(
+      'type' => 'sculpture',
+      'name' => t('Sculpture'),
+      'description' => t('A carving made out of stone or wood.')
+    );
+    $types['ancient_book'] = (object)array(
+      'type' => 'ancient_book',
+      'name' => t('Ancient book'),
+      'description' => t('A very old tome of knowledge.')
+    );
+  }
+  return $types;
+}
+
+/**
+ * Menu title callback.
+ *
+ * @param $type
+ *   The artwork type.
+ * @return string
+ *   The human-friendly name of the artwork type.
+ */
+function artwork_type_page_title($type) {
+  return t('Manage @type', array('@type' => $type->name));
+}
+
+/**
+ * Get an individual artwork type definition object.
+ *
+ * @param $type
+ *   The key of the artwork type we want.
+ * @return object
+ *   The specified artwork type.
+ */
+function artwork_type_load($type) {
+  if ($type == '%') {
+    dpm(debug_backtrace());
+  }
+  $types = artwork_types();
+  $type = str_replace('-', '_', $type);
+  return $types[$type];
+}
+
+
+/**
+ * Load artwork entities from the database.
+ *
+ * This function should be used whenever you need to load more than one artwork
+ * from the database. Artworks are loaded into memory and will not require
+ * database access if loaded again during the same page request.
+ *
+ * @see entity_load()
+ *
+ * @param $aids
+ *   An array of artwork IDs.
+ * @param $conditions
+ *   An array of conditions on the {artwork} table in the form 'field' => $value.
+ * @param $reset
+ *   Whether to reset the internal entity_load cache.
+ *
+ * @return
+ *   An array of node objects indexed by nid.
+ */
+function artwork_load_multiple($aids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('artwork', $aids, $conditions, $reset);
+}
+
+/**
+ * Load an artwork object from the database.
+ *
+ * @param $aid
+ *   The artwork ID.
+ * @param $vid
+ *   The revision ID.
+ * @param $reset
+ *   Whether to reset the artwork_load_multiple cache.
+ *
+ * @return
+ *   A fully-populated node object.
+ */
+function artwork_load($aid = NULL, $vid = NULL, $reset = FALSE) {
+  $aids = (isset($aid) ? array($aid) : array());
+  $conditions = (isset($vid) ? array('vid' => $vid) : array());
+  $artwork = artwork_load_multiple($aids, $conditions, $reset);
+  return $artwork ? reset($artwork) : FALSE;
+}
+
+/**
+ * Save an artwork.
+ *
+ * @param $artwork
+ *   The artwork to be saved.
+ * @return
+ *   The saved artwork, now with an aid if necessary.
+ */
+function artwork_save($artwork) {
+  return entity_get_controller('artwork')->save($artwork);
+}
+
+/**
+ * Returns an initialized artwork object.
+ *
+ * @param $type
+ *   The machine-readable type of the artwork.
+ *
+ * @return
+ *   An artwork object with all default fields initialized.
+ */
+function artwork_new($type = '') {
+  return entity_get_controller('artwork')->create($type);
+}
+
+
+/**
+ * Deletes an artwork by ID.
+ *
+ * @param $aid
+ *   The ID of the product to delete.
+ *
+ * @return
+ *   TRUE on success, FALSE otherwise.
+ */
+function artwork_delete($aid) {
+  return artwork_delete_multiple(array($aid));
+}
+
+/**
+ * Deletes multiple artworks by ID.
+ *
+ * @param $aids
+ *   An array of artwork IDs to delete.
+ *
+ * @return
+ *   TRUE on success, FALSE otherwise.
+ */
+function artwork_delete_multiple($aids) {
+  return entity_get_controller('artwork')->delete($aids);
+}

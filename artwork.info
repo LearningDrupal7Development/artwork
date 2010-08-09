@@ -1,0 +1,10 @@
+name = Artwork
+description = Demo module for "Drupal 7 Development"
+core = 7.x
+package = Drupal 7 Development
+files[] = artwork.module
+files[] = artwork.pages.inc
+files[] = artwork.admin.inc
+files[] = artwork.install
+files[] = artwork.controller.inc
+dependencies[] = field_ui
