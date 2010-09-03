@@ -87,7 +87,12 @@ function artwork_schema() {
     ),
     'primary key' => array('vid'),
     'foreign keys' => array(
-      'artwork' => 'aid',
+      'artwork' => array(
+        'table' => 'artwork',
+        'columns' => array(
+          'aid' => 'aid',
+        ),
+      ),
     ),
   );
 
