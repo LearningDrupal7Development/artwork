@@ -24,15 +24,13 @@ function artwork_add($type) {
   $types = artwork_types();
   $type = isset($type) ? str_replace('-', '_', $type) : NULL;
   if (empty($types[$type])) {
-    return drupal_not_found();
+    return MENU_NOT_FOUND;
   }
 
   $artwork = entity_get_controller('artwork')->create($type);
 
   drupal_set_title(t('Create @name', array('@name' => $types[$type]->name)), PASS_THROUGH);
-  $output = drupal_get_form($type . '_artwork_form', $artwork);
-
-  return $output;
+  return drupal_get_form($type . '_artwork_form', $artwork);
 }
 
 /**
