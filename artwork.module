@@ -9,6 +9,7 @@ function artwork_entity_info() {
     'controller class' => 'ArtworkController',
     'base table' => 'artwork',
     'revision table' => 'artwork_revision',
+    'uri callback' => 'artwork_uri',
     'fieldable' => TRUE,
     'entity keys' => array(
       'id' => 'aid',
@@ -45,6 +46,15 @@ function artwork_entity_info() {
   }
 
   return $return;
+}
+
+/**
+ * Entity uri callback.
+ */
+function artwork_uri($artwork) {
+  return array(
+    'path' => 'artwork/' . $artwork->aid,
+  );
 }
 
 /**
