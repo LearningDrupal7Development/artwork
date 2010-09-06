@@ -163,7 +163,7 @@ function artwork_page_view($artwork, $view_mode = 'full') {
 
   if ($view_mode == 'teaser') {
     $artwork->content['title'] = array(
-      '#value' => filter_xss($artwork->title),
+      '#markup' => filter_xss($artwork->title),
       '#weight' => -5,
     );
   }
