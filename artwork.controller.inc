@@ -163,6 +163,8 @@ class ArtworkController extends DrupalDefaultEntityController {
         return FALSE;
       }
 
+      module_invoke_all('entity_delete', $artwork, 'artwork');
+
       // Clear the page and block and artwork caches.
       cache_clear_all();
       $this->resetCache();
