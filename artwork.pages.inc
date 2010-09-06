@@ -172,7 +172,7 @@ function artwork_page_view($artwork, $view_mode = 'full') {
   field_attach_prepare_view('artwork', array($artwork->aid => $artwork), $view_mode);
   entity_prepare_view('artwork', array($artwork->aid => $artwork));
   $artwork->content += field_attach_view('artwork', $artwork, $view_mode);
-
+  
   return $artwork->content;
 }
 
@@ -217,11 +217,17 @@ function artwork_delete_confirm_submit($form, &$form_state) {
 function artwork_page_list_recent() {
   $content = array();
 
-  $aids = db_query_range("SELECT aid FROM {artwork} ORDER BY created DESC", 0, 5)->fetchCol();
-  $artworks = artwork_load_multiple($aids);
+  $query = new EntityFieldQuery();
+  $query
+    ->entityCondition('entity_type', 'artwork')
+    ->propertyOrderBy('created', 'DESC')
+    ->fieldCondition('field_artist', 'value', 'Da Vinci', 'CONTAINS', 0)
+    ->range(0, 5);
+  $result = $query->execute();
 
+  $artworks = artwork_load_multiple(array_keys($result['artwork']));
   foreach ($artworks as $artwork) {
-    $content[] = artwork_page_view($artwork, 'teaser');
+    $content[$artwork->aid] = artwork_page_view($artwork, 'teaser');
   }
 
   return $content;
