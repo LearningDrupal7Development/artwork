@@ -72,6 +72,13 @@ function artwork_field_extra_fields() {
           'weight' => -5,
         ),
       ),
+      'display' => array(
+        'title' => array(
+          'label' => t('Title'),
+          'description' => t('The name of the artwork'),
+          'weight' => -5,
+        ),
+      ),
     );
   }
 
