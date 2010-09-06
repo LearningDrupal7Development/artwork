@@ -77,7 +77,7 @@ class ArtworkController extends DrupalDefaultEntityController {
       $function = 'field_attach_' . $op;
       $function('artwork', $artwork);
 
-      entity_invoke($op, 'artwork', $artwork);
+      module_invoke_all('entity_' . $op, $artwork, 'artwork');
 
       // Clear internal properties.
       unset($artwork->is_new);
