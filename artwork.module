@@ -275,14 +275,10 @@ function artwork_type_page_title($type) {
  *   The specified artwork type.
  */
 function artwork_type_load($type) {
-  if ($type == '%') {
-    dpm(debug_backtrace());
-  }
   $types = artwork_types();
   $type = str_replace('-', '_', $type);
-  return $types[$type];
+  return isset($types[$type]) ? $types[$type] : FALSE;
 }
-
 
 /**
  * Load artwork entities from the database.
