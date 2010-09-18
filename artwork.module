@@ -15,6 +15,7 @@ function artwork_entity_info() {
       'id' => 'aid',
       'revision' => 'vid',
       'bundle' => 'type',
+      'label' => 'title',
      ),
     'bundle keys' => array(
       'bundle' => 'type',
